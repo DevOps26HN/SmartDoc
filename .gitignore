@@ -1,0 +1,23 @@
+# Java
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+mvnw
+mvnw.cmd
+
+# Node
+node_modules/
+dist/
+.eslintcache
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Docker
+.docker/

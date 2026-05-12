@@ -1,0 +1,1 @@
+This folder will contain the code for the Client of the project
