@@ -17,7 +17,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final List<Document> documents = new ArrayList<>();
 
     public DocumentServiceImpl() {
-        // Mock data for initial milestone
+        // Mock data for initial milestone, just to test
         documents.add(new Document("1", "Project Proposal", "This is the initial project proposal for SmartDoc.", "PROCESSED"));
         documents.add(new Document("2", "Architecture Overview", "Detailed architecture of the SmartDoc microservices.", "PENDING"));
     }
