@@ -1,1 +1,0 @@
-This folder will contain code for the server part of the project
