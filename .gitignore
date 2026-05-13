@@ -1,23 +1,38 @@
 # Java
 target/
+build/
 *.class
 *.jar
 *.war
 *.ear
-.mvn/
-mvnw
-mvnw.cmd
+
+# Spring / STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code
+.vscode/
 
 # Node
 node_modules/
 dist/
 .eslintcache
 
-# IDEs
-.idea/
-*.iml
-.vscode/
+# OS
 .DS_Store
 
 # Docker
 .docker/
+
+**/HELP.md
