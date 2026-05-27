@@ -8,10 +8,16 @@
         state: directory
         mode: "0755"
 
-    - name: Copy docker-compose.yml to VM
+    - name: Create infra directory on VM
+      file:
+        path: /opt/smartdoc/infra
+        state: directory
+        mode: "0755"
+
+    - name: Copy docker-compose.yml to VM infra directory
       copy:
         src: ../docker-compose.yml
-        dest: /opt/smartdoc/docker-compose.yml
+        dest: /opt/smartdoc/infra/docker-compose.yml
         mode: "0644"
 
     - name: Copy client directory to VM
@@ -27,6 +33,6 @@
         mode: "0755"
 
     - name: Start SmartDoc containers
-      command: docker-compose up -d --build
+      command: docker compose up -d --build
       args:
-        chdir: /opt/smartdoc
+        chdir: /opt/smartdoc/infra
