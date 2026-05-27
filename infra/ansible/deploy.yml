@@ -1,0 +1,32 @@
+- hosts: azure
+  become: yes
+
+  tasks:
+    - name: Create SmartDoc app directory
+      file:
+        path: /opt/smartdoc
+        state: directory
+        mode: "0755"
+
+    - name: Copy docker-compose.yml to VM
+      copy:
+        src: ../docker-compose.yml
+        dest: /opt/smartdoc/docker-compose.yml
+        mode: "0644"
+
+    - name: Copy client directory to VM
+      copy:
+        src: ../../client
+        dest: /opt/smartdoc/
+        mode: "0755"
+
+    - name: Copy server directory to VM
+      copy:
+        src: ../../server
+        dest: /opt/smartdoc/
+        mode: "0755"
+
+    - name: Start SmartDoc containers
+      command: docker-compose up -d --build
+      args:
+        chdir: /opt/smartdoc
