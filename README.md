@@ -94,8 +94,8 @@ The Ansible playbooks perform the following tasks on the provisioned VM:
 ## Public Deployment URLs
 After a successful Terraform + Ansible run, the application is publicly accessible at:
 
-- **Frontend:** [http://20.86.114.210:3000](http://20.86.114.210:3000)
-- **Backend API:** [http://20.86.114.210:8080/api/v1/documents](http://20.86.114.210:8080/api/v1/documents)
+- **Frontend:** [http://20.123.168.66:3000](http://20.123.168.66:3000)
+- **Backend API:** [http://20.123.168.66:8080/api/v1/documents](http://20.123.168.66:8080/api/v1/documents)
 
 ---
 
@@ -103,7 +103,7 @@ After a successful Terraform + Ansible run, the application is publicly accessib
 To confirm that the deployment is healthy on the Azure VM:
 
 ```bash
-ssh azureuser@20.86.114.210
+ssh azureuser@20.123.168.66
 sudo docker ps
 curl http://localhost:8080/api/v1/documents
 ```
