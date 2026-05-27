@@ -21,3 +21,8 @@
         name: docker
         state: started
         enabled: yes
+        
+    - name: Install Docker Compose
+      apt:
+        name: docker-compose
+        state: present
