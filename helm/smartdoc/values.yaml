@@ -57,9 +57,13 @@ db:
     size: 1Gi
     storageClass: ""      # "" = cluster default StorageClass
     accessMode: ReadWriteOnce
-  resources: {}
-  #  requests: { cpu: 100m, memory: 256Mi }
-  #  limits:   { cpu: 500m, memory: 512Mi }
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
 # ---------------------------------------------------------------------------
 # Server (Spring Boot document-service).
@@ -80,7 +84,13 @@ server:
     port: 8080
   # Extra environment variables, if ever needed.
   extraEnv: []
-  resources: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
 # ---------------------------------------------------------------------------
 # Client (React SPA served by nginx). nginx is reconfigured at runtime from a
@@ -95,7 +105,13 @@ client:
     pullPolicy: ""
   service:
     port: 80
-  resources: {}
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
 
 # ---------------------------------------------------------------------------
 # Ingress — the only externally reachable entry point.

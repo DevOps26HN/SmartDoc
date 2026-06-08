@@ -48,3 +48,10 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 .terraform.lock.hcl
+
+# Kubernetes / local secrets (never commit cluster access or credentials)
+stud.yaml
+*kubeconfig*
+*.kubeconfig
+.env
+.env.local

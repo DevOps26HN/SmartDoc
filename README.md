@@ -208,8 +208,9 @@ Before installing, edit [`helm/smartdoc/values.yaml`](helm/smartdoc/values.yaml)
 | `client.image.repository` / `client.image.tag` | Your pushed client image |
 | `imagePullSecrets` | `[{ name: ghcr-secret }]` when the registry is private |
 | `db.existingSecret` | `smartdoc-db` to use the out-of-band password secret (recommended), **or** pass `--set db.password=...` at install time |
+| `db.resources` / `server.resources` / `client.resources` | **Required on the AET cluster** — each container must define `limits.cpu` and `limits.memory` (namespace quota rejects pods without limits) |
 
-The committed `values.yaml` already targets `ghcr.io/devops26hn/smartdoc-{server,client}:0.1.0`, `ghcr-secret`, and `go54niq-devops26.stud.k8s.aet.cit.tum.de` — adjust if your team uses different images or a different `<tum-id>`.
+The committed `values.yaml` already targets `ghcr.io/devops26hn/smartdoc-{server,client}:0.1.0`, `ghcr-secret`, `go54niq-devops26.stud.k8s.aet.cit.tum.de`, and resource limits for all three components — adjust if your team uses different images or a different `<tum-id>`.
 
 ### 4. Install the chart
 From the repository root (with `ingress.host`, images, and `imagePullSecrets` already in `values.yaml`):
@@ -252,7 +253,7 @@ host. Then open the frontend URL in a browser — the client should show documen
 served by the backend (same behaviour as the Docker Compose / Azure deployment).
 
 ```bash
-curl https://<ingress.host>/api/v1/documents
+curl https://go54niq-devops26.stud.k8s.aet.cit.tum.de/api/v1/documents
 ```
 
 ### Secrets & configuration
