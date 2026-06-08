@@ -1,0 +1,31 @@
+{{- if .Values.client.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartdoc.client.fullname" . }}-nginx
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: client
+data:
+  # nginx serves the SPA and proxies /api to the server Service. The upstream
+  # host is templated from values — this is the configuration that differs
+  # between local (docker-compose service "server") and the cluster.
+  default.conf: |
+    server {
+        listen {{ .Values.client.service.port }};
+
+        location / {
+            root /usr/share/nginx/html;
+            index index.html index.htm;
+            try_files $uri $uri/ /index.html;
+        }
+
+        location /api {
+            proxy_pass http://{{ include "smartdoc.server.fullname" . }}:{{ .Values.server.service.port }};
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+{{- end }}

@@ -1,0 +1,118 @@
+# Default values for the SmartDoc chart.
+# Everything that changes between environments (local / AET cluster / per-team)
+# is parameterised here. Templates must never hardcode environment-specific
+# values — override them with `--set`, a custom `-f my-values.yaml`, or by
+# editing this file before `helm install`.
+
+# -- Override the generated resource name prefix (defaults to the release name).
+nameOverride: ""
+fullnameOverride: ""
+
+# Image pull secrets used by every component. Reference secrets BY NAME only;
+# their contents (registry credentials) are created out-of-band and never
+# committed. Example for a private GHCR image:
+#   imagePullSecrets:
+#     - name: ghcr-secret
+imagePullSecrets:
+  - name: ghcr-secret
+
+# Default image pull policy for all components (per-component override below).
+imagePullPolicy: IfNotPresent
+
+# Common pod-level annotations/labels applied to every component.
+podAnnotations: {}
+commonLabels: {}
+
+# ---------------------------------------------------------------------------
+# Database (PostgreSQL) — internal only, never exposed through the Ingress.
+# ---------------------------------------------------------------------------
+db:
+  enabled: true
+  replicas: 1
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: ""        # falls back to .Values.imagePullPolicy when empty
+  service:
+    port: 5432
+  # Non-secret connection settings (surfaced via the server ConfigMap too).
+  database: smartdoc
+  username: postgres
+  # --- Password handling (NO real password is committed) --------------------
+  # On the AET cluster you MUST override this. Two supported options:
+  #   1. Pass it at install time and let the chart create the Secret:
+  #        helm install ... --set db.password='<strong-password>'
+  #   2. Create a Secret out-of-band and reference it (preferred on a shared
+  #      cluster). The Secret must contain the key named below:
+  #        kubectl create secret generic smartdoc-db \
+  #          --from-literal=POSTGRES_PASSWORD='<strong-password>'
+  #        # then: --set db.existingSecret=smartdoc-db
+  # The default below matches the W04H01 / docker-compose dev default and is a
+  # throwaway local value — do not rely on it on the cluster.
+  password: "postgres"
+  existingSecret: ""
+  existingSecretPasswordKey: POSTGRES_PASSWORD
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""      # "" = cluster default StorageClass
+    accessMode: ReadWriteOnce
+  resources: {}
+  #  requests: { cpu: 100m, memory: 256Mi }
+  #  limits:   { cpu: 500m, memory: 512Mi }
+
+# ---------------------------------------------------------------------------
+# Server (Spring Boot document-service).
+# CI does not push images yet, so the operator builds & pushes these and sets
+# the repository/tag below before installing. Example build & push:
+#   docker build -t ghcr.io/devops26hn/smartdoc-server:0.1.0 \
+#     server/services/document-service
+#   docker push ghcr.io/devops26hn/smartdoc-server:0.1.0
+# ---------------------------------------------------------------------------
+server:
+  enabled: true
+  replicas: 1
+  image:
+    repository: ghcr.io/devops26hn/smartdoc-server
+    tag: "0.1.0"
+    pullPolicy: ""
+  service:
+    port: 8080
+  # Extra environment variables, if ever needed.
+  extraEnv: []
+  resources: {}
+
+# ---------------------------------------------------------------------------
+# Client (React SPA served by nginx). nginx is reconfigured at runtime from a
+# templated ConfigMap so it proxies /api to the in-cluster server Service.
+# ---------------------------------------------------------------------------
+client:
+  enabled: true
+  replicas: 1
+  image:
+    repository: ghcr.io/devops26hn/smartdoc-client
+    tag: "0.1.0"
+    pullPolicy: ""
+  service:
+    port: 80
+  resources: {}
+
+# ---------------------------------------------------------------------------
+# Ingress — the only externally reachable entry point.
+# Routes external traffic to the CLIENT only; the client's nginx proxies /api
+# to the server Service. The database and server are never exposed directly.
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: nginx
+  # Wildcard DNS on the AET stud cluster: *.stud.k8s.aet.cit.tum.de
+  # Canary exercise used go54niq-devops-ss26...; SmartDoc uses devops26 to match the namespace.
+  host: go54niq-devops26.stud.k8s.aet.cit.tum.de
+  path: /
+  pathType: Prefix
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - secretName: smartdoc-devops26-tls
+      hosts:
+        - go54niq-devops26.stud.k8s.aet.cit.tum.de
