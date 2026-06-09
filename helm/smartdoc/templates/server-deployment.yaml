@@ -1,0 +1,76 @@
+{{- if .Values.server.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.server.fullname" . }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: {{ .Values.server.replicas }}
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" (dict "context" . "component" "server") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.labels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+      annotations:
+        # Roll the pods when the non-secret config changes.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap-server.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: server
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy | default .Values.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.server.service.port }}
+          envFrom:
+            # Non-secret datasource config (URL, username, db name).
+            - configMapRef:
+                name: {{ include "smartdoc.server.fullname" . }}-config
+          env:
+            # The password is the only secret value and comes from a Secret.
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "smartdoc.db.secretName" . }}
+                  key: {{ .Values.db.existingSecretPasswordKey }}
+            - name: SERVER_PORT
+              value: {{ .Values.server.service.port | quote }}
+            {{- with .Values.server.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          startupProbe:
+            # Spring Boot can take a while to start; give it room before the
+            # liveness probe takes over.
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+{{- end }}

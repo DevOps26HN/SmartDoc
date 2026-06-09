@@ -1,0 +1,19 @@
+{{- if .Values.db.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.db.fullname" . }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db
+spec:
+  # ClusterIP only — the database is never reachable from outside the cluster.
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.db.service.port }}
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+  selector:
+    {{- include "smartdoc.selectorLabels" (dict "context" . "component" "db") | nindent 4 }}
+{{- end }}

@@ -1,0 +1,80 @@
+{{- if .Values.db.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.db.fullname" . }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db
+spec:
+  # The database is stateful; never run more than one replica against a single
+  # ReadWriteOnce volume.
+  replicas: {{ .Values.db.replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" (dict "context" . "component" "db") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.labels" . | nindent 8 }}
+        app.kubernetes.io/component: db
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: db
+          image: "{{ .Values.db.image.repository }}:{{ .Values.db.image.tag }}"
+          imagePullPolicy: {{ .Values.db.image.pullPolicy | default .Values.imagePullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.db.service.port }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.db.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.db.username | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "smartdoc.db.secretName" . }}
+                  key: {{ .Values.db.existingSecretPasswordKey }}
+            # Use a sub-directory so a freshly mounted volume (which may contain
+            # a lost+found dir) does not block PostgreSQL initialisation.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U {{ .Values.db.username }} -d {{ .Values.db.database }}"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 5
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U {{ .Values.db.username }} -d {{ .Values.db.database }}"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            {{- toYaml .Values.db.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+        {{- if .Values.db.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "smartdoc.db.fullname" . }}
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
+{{- end }}

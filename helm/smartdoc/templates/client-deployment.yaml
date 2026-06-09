@@ -1,0 +1,61 @@
+{{- if .Values.client.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "smartdoc.client.fullname" . }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: client
+spec:
+  replicas: {{ .Values.client.replicas }}
+  selector:
+    matchLabels:
+      {{- include "smartdoc.selectorLabels" (dict "context" . "component" "client") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "smartdoc.labels" . | nindent 8 }}
+        app.kubernetes.io/component: client
+      annotations:
+        # Roll the client pods when the nginx config changes.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap-client-nginx.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: client
+          image: "{{ .Values.client.image.repository }}:{{ .Values.client.image.tag }}"
+          imagePullPolicy: {{ .Values.client.image.pullPolicy | default .Values.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.client.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.client.resources | nindent 12 }}
+          volumeMounts:
+            # Override the image's baked-in nginx config so /api proxies to the
+            # in-cluster server Service (the upstream host differs per release).
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: {{ include "smartdoc.client.fullname" . }}-nginx
+{{- end }}

@@ -1,0 +1,14 @@
+{{- if .Values.server.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartdoc.server.fullname" . }}-config
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+data:
+  # Non-secret datasource configuration. The JDBC URL points at the in-cluster
+  # database Service, so it differs between local (docker-compose) and cluster.
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://{{ include "smartdoc.db.fullname" . }}:{{ .Values.db.service.port }}/{{ .Values.db.database }}"
+  SPRING_DATASOURCE_USERNAME: {{ .Values.db.username | quote }}
+{{- end }}

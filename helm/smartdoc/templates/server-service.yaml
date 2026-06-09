@@ -1,0 +1,20 @@
+{{- if .Values.server.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "smartdoc.server.fullname" . }}
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  # ClusterIP — the server API is reached from outside only via the client's
+  # /api proxy, never exposed directly through the Ingress.
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.server.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "smartdoc.selectorLabels" (dict "context" . "component" "server") | nindent 4 }}
+{{- end }}
