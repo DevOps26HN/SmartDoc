@@ -4,6 +4,9 @@ Components:
   - client  ({{ include "smartdoc.client.fullname" . }})  -> exposed via Ingress
   - server  ({{ include "smartdoc.server.fullname" . }})  -> internal (ClusterIP), reached via the client /api proxy
   - db      ({{ include "smartdoc.db.fullname" . }})       -> internal (ClusterIP), not exposed
+{{- if .Values.genai.enabled }}
+  - genai   ({{ include "smartdoc.genai.fullname" . }})    -> internal (ClusterIP), reached by the server over REST; NOT exposed
+{{- end }}
 
 {{- if .Values.ingress.enabled }}
 

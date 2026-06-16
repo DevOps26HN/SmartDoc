@@ -11,4 +11,8 @@ data:
   # database Service, so it differs between local (docker-compose) and cluster.
   SPRING_DATASOURCE_URL: "jdbc:postgresql://{{ include "smartdoc.db.fullname" . }}:{{ .Values.db.service.port }}/{{ .Values.db.database }}"
   SPRING_DATASOURCE_USERNAME: {{ .Values.db.username | quote }}
+  {{- if .Values.genai.enabled }}
+  # In-cluster address of the GenAI service — injected here, never hardcoded in source.
+  GENAI_BASE_URL: "http://{{ include "smartdoc.genai.fullname" . }}:{{ .Values.genai.service.port }}"
+  {{- end }}
 {{- end }}

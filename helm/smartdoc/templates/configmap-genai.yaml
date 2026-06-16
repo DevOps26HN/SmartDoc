@@ -1,0 +1,21 @@
+{{- if .Values.genai.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartdoc.genai.fullname" . }}-config
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: genai
+data:
+  # Non-secret GenAI configuration. Backend selection and model names are
+  # configuration, not code — switch providers by changing these values.
+  GENAI_BACKEND: {{ .Values.genai.backend | quote }}
+  GENAI_MODEL: {{ .Values.genai.model | quote }}
+  GENAI_LOCAL_MODEL: {{ .Values.genai.localModel | quote }}
+  {{- if .Values.genai.openaiBaseUrl }}
+  OPENAI_BASE_URL: {{ .Values.genai.openaiBaseUrl | quote }}
+  {{- end }}
+  {{- if .Values.genai.ollamaBaseUrl }}
+  OLLAMA_BASE_URL: {{ .Values.genai.ollamaBaseUrl | quote }}
+  {{- end }}
+{{- end }}

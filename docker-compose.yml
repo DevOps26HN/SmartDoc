@@ -13,6 +13,31 @@ services:
       timeout: 5s
       retries: 5
 
+  # GenAI microservice — independent Python service. Internal only (no published
+  # port), exactly like the database: the server reaches it by its compose
+  # service name (http://genai:8000); it is never exposed to the host/public.
+  genai:
+    build:
+      context: ./genai
+      dockerfile: Dockerfile
+    environment:
+      # Backend selection + model config (no secret baked in).
+      GENAI_BACKEND: ${GENAI_BACKEND:-openai}
+      GENAI_MODEL: ${GENAI_MODEL:-gpt-4o-mini}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      GENAI_LOCAL_MODEL: ${GENAI_LOCAL_MODEL:-llama3.2:1b}
+      # Cloud API key — supplied via the environment / .env, never committed.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   server:
     build:
       context: ./server/services/document-service
@@ -23,8 +48,12 @@ services:
       SPRING_DATASOURCE_URL: ${DATABASE_URL:-jdbc:postgresql://db:5432/smartdoc}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # In-cluster/in-network address of the GenAI service — never hardcoded.
+      GENAI_BASE_URL: ${GENAI_BASE_URL:-http://genai:8000}
     depends_on:
       db:
+        condition: service_healthy
+      genai:
         condition: service_healthy
 
   client:
@@ -36,5 +65,17 @@ services:
     depends_on:
       - server
 
+  # Optional local-inference backend. Started only with the "local" profile:
+  #   GENAI_BACKEND=local docker compose --profile local up --build
+  # Keeps inference fully self-hosted (no data leaves your machine).
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local"]
+    volumes:
+      - ollama_models:/root/.ollama
+    expose:
+      - "11434"
+
 volumes:
   postgres_data:
+  ollama_models:

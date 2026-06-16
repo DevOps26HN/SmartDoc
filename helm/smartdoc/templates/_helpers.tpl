@@ -43,6 +43,10 @@ Per-component fully qualified names — give each component a stable DNS name.
 {{- printf "%s-client" (include "smartdoc.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{- define "smartdoc.genai.fullname" -}}
+{{- printf "%s-genai" (include "smartdoc.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{/*
 Name of the Secret holding the database password (existing or chart-managed).
 */}}
@@ -51,6 +55,17 @@ Name of the Secret holding the database password (existing or chart-managed).
 {{- .Values.db.existingSecret -}}
 {{- else -}}
 {{- include "smartdoc.db.fullname" . -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Name of the Secret holding the GenAI cloud API key (existing or chart-managed).
+*/}}
+{{- define "smartdoc.genai.secretName" -}}
+{{- if .Values.genai.existingSecret -}}
+{{- .Values.genai.existingSecret -}}
+{{- else -}}
+{{- include "smartdoc.genai.fullname" . -}}
 {{- end -}}
 {{- end -}}
 

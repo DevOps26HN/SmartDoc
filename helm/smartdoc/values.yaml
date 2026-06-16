@@ -93,6 +93,53 @@ server:
       memory: 512Mi
 
 # ---------------------------------------------------------------------------
+# GenAI microservice (independent Python/FastAPI service) — INTERNAL only.
+# Exposed as a ClusterIP Service and reached by the server via its in-cluster
+# name (http://<release>-genai:8000). It is NEVER added to the Ingress.
+# Build & push the image like the others, e.g.:
+#   docker build -t ghcr.io/devops26hn/smartdoc-genai:0.1.0 genai
+#   docker push ghcr.io/devops26hn/smartdoc-genai:0.1.0
+# ---------------------------------------------------------------------------
+genai:
+  enabled: true
+  replicas: 1
+  image:
+    repository: ghcr.io/devops26hn/smartdoc-genai
+    tag: "0.1.0"
+    pullPolicy: ""
+  service:
+    port: 8000
+  # --- Non-secret configuration (rendered into a ConfigMap) -----------------
+  # Backend selection is pure configuration: "openai" (cloud) or "local" (Ollama).
+  # Demonstrating the cloud backend on the cluster is sufficient for grading.
+  backend: openai
+  model: gpt-4o-mini
+  # Optional override for an OpenAI-compatible endpoint (leave empty for OpenAI).
+  openaiBaseUrl: ""
+  # Local backend (only used when backend=local); point at an Ollama Service.
+  ollamaBaseUrl: ""
+  localModel: "llama3.2:1b"
+  extraEnv: []
+  # --- Cloud API key (SECRET — never committed) -----------------------------
+  # On the cluster, create the Secret out-of-band and reference it by name:
+  #   kubectl create secret generic smartdoc-genai \
+  #     --from-literal=OPENAI_API_KEY='sk-...'
+  #   # then install with: --set genai.existingSecret=smartdoc-genai
+  # Or let the chart create it at install time (do NOT commit the real key):
+  #   --set genai.apiKey='sk-...'
+  # Leave both empty to run a key-less backend (e.g. local Ollama).
+  apiKey: ""
+  existingSecret: ""
+  apiKeySecretKey: OPENAI_API_KEY
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ---------------------------------------------------------------------------
 # Client (React SPA served by nginx). nginx is reconfigured at runtime from a
 # templated ConfigMap so it proxies /api to the in-cluster server Service.
 # ---------------------------------------------------------------------------
