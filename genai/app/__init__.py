@@ -1,0 +1,1 @@
+"""SmartDoc GenAI microservice package."""
