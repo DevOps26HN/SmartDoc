@@ -19,6 +19,13 @@ spec:
       annotations:
         # Roll the pods when the non-secret config changes.
         checksum/config: {{ include (print $.Template.BasePath "/configmap-server.yaml") . | sha256sum }}
+        {{- if .Values.server.metrics.enabled }}
+        # Prometheus scrape discovery. Prometheus resolves the target from the
+        # pod IP at scrape time; no environment-specific address is hardcoded.
+        prometheus.io/scrape: "true"
+        prometheus.io/path: {{ .Values.server.metrics.path | quote }}
+        prometheus.io/port: {{ .Values.server.service.port | quote }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

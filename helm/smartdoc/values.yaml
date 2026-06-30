@@ -82,6 +82,12 @@ server:
     pullPolicy: ""
   service:
     port: 8080
+  # Application metrics (Spring Boot Actuator + Micrometer Prometheus). The
+  # annotations let a Prometheus server discover and scrape this pod; the scrape
+  # target is resolved at runtime, so no address or credentials are hardcoded.
+  metrics:
+    enabled: true
+    path: /actuator/prometheus
   # Extra environment variables, if ever needed.
   extraEnv: []
   resources:
