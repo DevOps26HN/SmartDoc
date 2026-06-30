@@ -1,0 +1,13 @@
+# Grafana data source provisioning for the local docker-compose stack.
+# Prometheus is reached by its compose service name; uid matches the one used
+# by the committed dashboards and by the in-cluster Helm datasource ConfigMap.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: smartdoc-prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s

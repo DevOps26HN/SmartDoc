@@ -65,6 +65,45 @@ services:
     depends_on:
       - server
 
+  # ---------------------------------------------------------------------------
+  # Observability stack (Task 8.3 / W09H01). Prometheus scrapes the server and
+  # GenAI metrics endpoints over the internal compose network by service name
+  # (never a hardcoded host/public address); Grafana visualises them from
+  # committed, provisioned dashboards. Mirrors the in-cluster Helm stack.
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/rules/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - server
+      - genai
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    environment:
+      # Admin credentials come from the environment / .env — never committed.
+      # Defaults are throwaway local dev values; override in .env for anything real.
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      # Provisioned data source + dashboard provider, and the dashboard JSON.
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
   # Optional local-inference backend. Started only with the "local" profile:
   #   GENAI_BACKEND=local docker compose --profile local up --build
   # Keeps inference fully self-hosted (no data leaves your machine).
@@ -79,3 +118,5 @@ services:
 volumes:
   postgres_data:
   ollama_models:
+  prometheus_data:
+  grafana_data:
