@@ -2,9 +2,9 @@ groups:
   - name: smartdoc.availability
     rules:
       # Fires when any scrape target (server, genai, prometheus) has been
-      # unreachable for more than 1 minute. Demonstrably evaluating: delete or
-      # scale down a pod and the alert moves to Pending then Firing within
-      # ~1 minute.
+      # unreachable for more than 1 minute. Demonstrably evaluating: stop a
+      # service (e.g. `docker compose stop genai`) and the alert moves to
+      # Pending then Firing within ~1 minute.
       - alert: InstanceDown
         expr: up == 0
         for: 1m
