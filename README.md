@@ -23,13 +23,26 @@ This repository contains the full source code, infrastructure as code, and confi
 ├── helm/
 │   └── smartdoc/                        # Helm chart for the AET Kubernetes cluster
 │       ├── Chart.yaml
-│       ├── values.yaml                  # All environment-specific values (incl. genai.*)
+│       ├── values.yaml                  # All environment-specific values (incl. genai.* + monitoring)
+│       ├── monitoring/                  # In-cluster monitoring assets loaded by the chart
+│       │   ├── prometheus/alerts.yml    # Alert rules (mounted into Prometheus via ConfigMap)
+│       │   └── grafana/dashboards/      # Dashboard .json provisioned into Grafana
 │       └── templates/                   # Deployments, Services, ConfigMaps, Secrets, Ingress
 │           ├── genai-deployment.yaml    # GenAI Deployment
 │           ├── genai-service.yaml       # GenAI Service (ClusterIP — internal only)
-│           ├── configmap-genai.yaml     # GenAI non-secret config (backend, model)
-│           └── secret-genai.yaml        # GenAI cloud API key (chart-managed, optional)
-├── docker-compose.yml                   # Local and remote container orchestration (incl. genai)
+│           ├── prometheus-deployment.yaml  # Prometheus (ClusterIP — internal only)
+│           ├── grafana-deployment.yaml     # Grafana (ClusterIP — internal only)
+│           ├── configmap-prometheus.yaml   # Prometheus scrape config (server + genai)
+│           ├── configmap-grafana-*.yaml    # Grafana datasource + dashboard provisioning
+│           └── secret-grafana.yaml         # Grafana admin credentials (referenced by name)
+├── monitoring/                          # LOCAL (docker-compose) monitoring stack — Task 8.3
+│   ├── prometheus/
+│   │   ├── prometheus.yml               # Scrape config (server:8080, genai:8000) + rule_files
+│   │   └── alerts.yml                   # Alert rules (InstanceDown, HighServerLatencyP95)
+│   └── grafana/
+│       ├── provisioning/                # Auto-provisioned datasource + dashboard provider
+│       └── dashboards/smartdoc-overview.json  # Committed dashboard (count, latency, error rate)
+├── docker-compose.yml                   # Local and remote container orchestration (incl. monitoring)
 └── .github/
     └── workflows/                       # CI/CD pipelines
 ```
@@ -245,11 +258,77 @@ result is real model output produced through the configured backend.
 ### Component Ports
 | Component | Container Port | Host Port |
 |-----------|----------------|-----------|
-| `client`  | 80             | 3000      |
-| `server`  | 8080           | 8080      |
-| `db`      | 5432           | *(not exposed — internal only)* |
-| `genai`   | 8000           | *(not exposed — internal only, reached by the server)* |
-| `ollama`  | 11434          | *(not exposed — only with `--profile local`)* |
+| `client`     | 80             | 3000      |
+| `server`     | 8080           | 8080      |
+| `db`         | 5432           | *(not exposed — internal only)* |
+| `genai`      | 8000           | *(not exposed — internal only, reached by the server)* |
+| `prometheus` | 9090           | 9090      |
+| `grafana`    | 3000           | 3001      |
+| `ollama`     | 11434          | *(not exposed — only with `--profile local`)* |
+
+---
+
+## Observability — Metrics, Dashboards & Alerting (W09H01)
+
+The running system is instrumented so its real runtime behaviour is observable.
+Prometheus scrapes the services, Grafana visualises the data from committed
+dashboards, and an alert rule evaluates a real operational condition. The stack
+runs both **locally** (docker-compose) and **on the cluster** (Helm), and uses
+the same job names, dashboard `.json`, and alert rules in both.
+
+### Tracked metrics
+
+| Service | Endpoint | Instrumentation | Metrics |
+|---------|----------|-----------------|---------|
+| `server` (Spring Boot) | `/actuator/prometheus` | Actuator + Micrometer | `http_server_requests_seconds_*` — request **count**, **latency** (histogram), **error rate** (`status` / `outcome` tags), per URI |
+| `genai` (FastAPI) | `/metrics` | `prometheus-fastapi-instrumentator` | `http_requests_total`, `http_request_duration_seconds_*` — request **count**, **latency**, **error rate** for `/summarize`, `/ask`, `/health` |
+
+Numbers move with real traffic: open the app and Summarize/Ask a document, then
+watch the request-rate and latency panels respond. Both metrics endpoints are
+**internal only** — they are not routed through the Ingress (the client nginx
+proxies only `/api`).
+
+### Reaching the dashboards
+
+**Locally** (after `docker compose up --build`):
+
+- **Grafana:** [http://localhost:3001](http://localhost:3001) — login with
+  `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` (defaults `admin` / `admin`).
+  The **SmartDoc Overview** dashboard is auto-provisioned (request count,
+  latency p50/p95, and error rate for server and GenAI).
+- **Prometheus:** [http://localhost:9090](http://localhost:9090) — check
+  *Status → Targets* (all `UP`) and *Alerts*.
+
+**On the AET cluster**, Prometheus and Grafana are **ClusterIP only** (never
+added to the Ingress). Reach them with `kubectl port-forward`:
+
+```bash
+kubectl -n <namespace> port-forward svc/<release>-grafana 3001:3000     # then http://localhost:3001
+kubectl -n <namespace> port-forward svc/<release>-prometheus 9090:9090   # then http://localhost:9090
+```
+
+### Alert rule
+
+| Alert | Condition | File |
+|-------|-----------|------|
+| `InstanceDown` | `up == 0` for 1m — any scrape target unreachable | `monitoring/prometheus/alerts.yml` (local) · `helm/smartdoc/monitoring/prometheus/alerts.yml` (cluster) |
+| `HighServerLatencyP95` | server p95 request latency `> 1.5s` for 2m | same files |
+
+Demonstrate `InstanceDown` firing by stopping a scraped service
+(`docker compose stop genai`) and watching *Prometheus → Alerts* move from
+Pending to Firing within ~1 minute.
+
+### Required configuration / secrets
+
+| Variable | Where | Notes |
+|----------|-------|-------|
+| `GRAFANA_ADMIN_USER` | local `.env` | Grafana admin user (default `admin`) |
+| `GRAFANA_ADMIN_PASSWORD` | local `.env` | Grafana admin password (default `admin`) — **set a real value; never committed** |
+| `grafana.adminUser` / `grafana.adminPassword` *(or)* `grafana.existingSecret` | Helm | On the cluster, supply credentials via a `Secret` created out-of-band and referenced by name; contents stay out of git |
+
+Scrape intervals, retention, the Grafana data-source URL, and dashboard
+provisioning paths are all externalised (compose mounts / chart `values.yaml`
+and ConfigMaps) — no addresses or credentials are hardcoded in templates.
 
 ---
 
@@ -567,6 +646,8 @@ The system uses sane defaults, which can be overridden via a `.env` file (see `.
 | `OLLAMA_BASE_URL`   | `http://ollama:11434`                  | Ollama server URL (local backend) |
 | `GENAI_LOCAL_MODEL` | `llama3.2:1b`                          | Local model name           |
 | `GENAI_BASE_URL`    | `http://genai:8000`                    | How the **server** reaches the GenAI service (set on the server) |
+| `GRAFANA_ADMIN_USER` | `admin`                               | Grafana admin user (local monitoring stack) |
+| `GRAFANA_ADMIN_PASSWORD` | `admin`                           | **Secret** — Grafana admin password; override in `.env`, never committed |
 
 > The GenAI API key is the only true secret here and is supplied via the
 > environment / a non-committed `.env` (locally) or a Kubernetes `Secret` (on the
