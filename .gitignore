@@ -29,6 +29,18 @@ node_modules/
 dist/
 .eslintcache
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# Local task notes / milestone drafts (not part of the product repo)
+tasks/
+
 # OS
 .DS_Store
 

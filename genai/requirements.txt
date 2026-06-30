@@ -11,3 +11,7 @@ openai>=1.30,<2.0
 
 # Local / self-hosted backend (LLaMA-family models served by Ollama).
 ollama>=0.3,<1.0
+
+# Prometheus metrics instrumentation.
+prometheus-fastapi-instrumentator>=6.0,<7.0
+prometheus-client>=0.20,<1.0

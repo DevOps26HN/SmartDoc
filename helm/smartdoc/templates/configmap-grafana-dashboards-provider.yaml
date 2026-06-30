@@ -1,0 +1,24 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartdoc.grafana.fullname" . }}-dashboards-provider
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: SmartDoc
+        orgId: 1
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          # Dashboard JSON files are provisioned from this path inside the pod.
+          # The configmap-grafana-dashboards ConfigMap is mounted here.
+          path: /var/lib/grafana/dashboards
+          foldersFromFilesStructure: false
+{{- end }}

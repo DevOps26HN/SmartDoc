@@ -1,0 +1,45 @@
+{{- if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartdoc.prometheus.fullname" . }}-config
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: {{ .Values.prometheus.scrapeInterval }}
+      evaluation_interval: {{ .Values.prometheus.evaluationInterval }}
+
+    # Alert rules are loaded from the rules ConfigMap mounted at /etc/prometheus/rules/.
+    rule_files:
+      - /etc/prometheus/rules/*.yml
+
+    scrape_configs:
+      # Scrape Prometheus itself.
+      - job_name: prometheus
+        static_configs:
+          - targets:
+              - localhost:{{ .Values.prometheus.service.port }}
+
+      # Scrape the Spring Boot server via its internal ClusterIP Service.
+      # The Service name is derived from the Helm release name at template time,
+      # so no environment-specific address is hardcoded.
+      {{- if .Values.server.enabled }}
+      - job_name: smartdoc-server
+        metrics_path: {{ .Values.server.metrics.path }}
+        static_configs:
+          - targets:
+              - {{ include "smartdoc.server.fullname" . }}:{{ .Values.server.service.port }}
+      {{- end }}
+
+      # Scrape the GenAI FastAPI service via its internal ClusterIP Service.
+      {{- if and .Values.genai.enabled .Values.genai.metrics.enabled }}
+      - job_name: smartdoc-genai
+        metrics_path: {{ .Values.genai.metrics.path }}
+        static_configs:
+          - targets:
+              - {{ include "smartdoc.genai.fullname" . }}:{{ .Values.genai.service.port }}
+      {{- end }}
+{{- end }}

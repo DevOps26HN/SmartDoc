@@ -9,6 +9,7 @@ local/self-hosted Ollama) is chosen entirely through configuration.
 import logging
 
 from fastapi import FastAPI, HTTPException
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from .backends.base import Backend
 from .backends.factory import create_backend
@@ -34,6 +35,11 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+# Expose Prometheus metrics at /metrics.
+# Excludes the /metrics endpoint itself from instrumentation to avoid
+# self-scrape noise. Covers /summarize, /ask, /health automatically.
+Instrumentator(excluded_handlers=["/metrics"]).instrument(app).expose(app)
 
 settings = get_settings()
 _backend: Backend | None = None

@@ -1,0 +1,23 @@
+{{- if .Values.grafana.enabled }}
+{{- $dashboards := .Files.Glob "monitoring/grafana/dashboards/*.json" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartdoc.grafana.fullname" . }}-dashboards
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+data:
+  {{- if $dashboards }}
+  # Dashboard JSON files committed under helm/smartdoc/monitoring/grafana/dashboards/.
+  # Task 8.3 (#104) will replace the placeholder with a full SmartDoc dashboard.
+  {{- range $path, $content := $dashboards }}
+  {{ base $path }}: |
+{{ $content | toString | indent 4 }}
+  {{- end }}
+  {{- else }}
+  # No dashboard JSON files found. Add .json files to
+  # helm/smartdoc/monitoring/grafana/dashboards/ and upgrade the release.
+  .gitkeep: ""
+  {{- end }}
+{{- end }}

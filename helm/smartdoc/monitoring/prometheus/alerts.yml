@@ -1,0 +1,13 @@
+groups:
+  - name: smartdoc.availability
+    rules:
+      # Fires when any scrape target has been unreachable for more than 1 minute.
+      # Task 8.3 (#104) will add service-specific and SLO-based alert rules here.
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Instance {{ $labels.instance }} is down"
+          description: "Scrape target {{ $labels.instance }} (job={{ $labels.job }}) has been unreachable for more than 1 minute."

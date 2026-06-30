@@ -19,6 +19,13 @@ spec:
       annotations:
         # Roll the pods when the non-secret config changes.
         checksum/config: {{ include (print $.Template.BasePath "/configmap-genai.yaml") . | sha256sum }}
+        {{- if .Values.genai.metrics.enabled }}
+        # Prometheus scrape discovery. Prometheus resolves the target from the
+        # pod IP at scrape time; no environment-specific address is hardcoded.
+        prometheus.io/scrape: "true"
+        prometheus.io/path: {{ .Values.genai.metrics.path | quote }}
+        prometheus.io/port: {{ .Values.genai.service.port | quote }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
