@@ -126,7 +126,12 @@ genai:
   ollamaBaseUrl: ""
   localModel: "llama3.2:1b"
   extraEnv: []
-  # --- Cloud API key (SECRET — never committed) -----------------------------
+  # Prometheus metrics (prometheus-fastapi-instrumentator). The annotations
+  # let Prometheus discover and scrape this pod; no address is hardcoded.
+  metrics:
+    enabled: true
+    path: /metrics
+  # --- Cloud API key (SECRET - never committed) -----------------------------
   # On the cluster, create the Secret out-of-band and reference it by name:
   #   kubectl create secret generic smartdoc-genai \
   #     --from-literal=OPENAI_API_KEY='sk-...'
@@ -165,6 +170,69 @@ client:
     limits:
       cpu: 200m
       memory: 128Mi
+
+# ---------------------------------------------------------------------------
+# Prometheus - internal metrics aggregation. ClusterIP only; never exposed
+# through the Ingress. Access via kubectl port-forward for ad-hoc queries.
+# ---------------------------------------------------------------------------
+prometheus:
+  enabled: true
+  replicas: 1
+  image:
+    repository: prom/prometheus
+    tag: "v2.52.0"
+    pullPolicy: ""
+  service:
+    port: 9090
+  # Retention window for stored time-series data.
+  retention: "15d"
+  # How often Prometheus scrapes each target.
+  scrapeInterval: "15s"
+  # How often alerting rules are evaluated.
+  evaluationInterval: "15s"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ---------------------------------------------------------------------------
+# Grafana - internal dashboard and visualisation layer. ClusterIP only; never
+# exposed through the Ingress. Access via kubectl port-forward.
+# ---------------------------------------------------------------------------
+grafana:
+  enabled: true
+  replicas: 1
+  image:
+    repository: grafana/grafana
+    tag: "10.4.2"
+    pullPolicy: ""
+  service:
+    port: 3000
+  # Admin credentials (SECRET - never commit real values to git).
+  # On the AET cluster you MUST override these. Two supported options:
+  #   1. Let the chart create a Secret at install time:
+  #        helm install ... --set grafana.adminPassword='<strong-password>'
+  #   2. Create a Secret out-of-band and reference it by name (preferred):
+  #        kubectl create secret generic smartdoc-grafana \
+  #          --from-literal=admin-user=admin \
+  #          --from-literal=admin-password='<strong-password>'
+  #        # then: --set grafana.existingSecret=smartdoc-grafana
+  # The default below is a throwaway local dev value - do NOT use on the cluster.
+  adminUser: admin
+  adminPassword: "admin"
+  existingSecret: ""
+  adminUserKey: admin-user
+  adminPasswordKey: admin-password
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
 
 # ---------------------------------------------------------------------------
 # Ingress — the only externally reachable entry point.

@@ -1,0 +1,23 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartdoc.grafana.fullname" . }}-datasources
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: smartdoc-prometheus
+        # Prometheus URL is derived from the Helm Service name so no
+        # environment-specific address is hardcoded in this template.
+        url: http://{{ include "smartdoc.prometheus.fullname" . }}:{{ .Values.prometheus.service.port }}
+        access: proxy
+        isDefault: true
+        jsonData:
+          timeInterval: {{ .Values.prometheus.scrapeInterval }}
+{{- end }}

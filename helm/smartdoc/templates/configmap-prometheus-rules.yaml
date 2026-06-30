@@ -1,0 +1,14 @@
+{{- if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "smartdoc.prometheus.fullname" . }}-rules
+  labels:
+    {{- include "smartdoc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
+data:
+  # Alert rules are committed at helm/smartdoc/monitoring/prometheus/alerts.yml.
+  # Task 8.3 (#104) will add service-specific and SLO-based rules to that file.
+  alerts.yml: |
+{{ .Files.Get "monitoring/prometheus/alerts.yml" | indent 4 }}
+{{- end }}

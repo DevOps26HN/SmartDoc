@@ -47,6 +47,14 @@ Per-component fully qualified names — give each component a stable DNS name.
 {{- printf "%s-genai" (include "smartdoc.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{- define "smartdoc.prometheus.fullname" -}}
+{{- printf "%s-prometheus" (include "smartdoc.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "smartdoc.grafana.fullname" -}}
+{{- printf "%s-grafana" (include "smartdoc.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{/*
 Name of the Secret holding the database password (existing or chart-managed).
 */}}
@@ -66,6 +74,17 @@ Name of the Secret holding the GenAI cloud API key (existing or chart-managed).
 {{- .Values.genai.existingSecret -}}
 {{- else -}}
 {{- include "smartdoc.genai.fullname" . -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Name of the Secret holding Grafana admin credentials (existing or chart-managed).
+*/}}
+{{- define "smartdoc.grafana.secretName" -}}
+{{- if .Values.grafana.existingSecret -}}
+{{- .Values.grafana.existingSecret -}}
+{{- else -}}
+{{- include "smartdoc.grafana.fullname" . -}}
 {{- end -}}
 {{- end -}}
 

@@ -1,10 +1,10 @@
 apiVersion: v2
 name: smartdoc
-description: SmartDoc — client, document-service (server) and PostgreSQL packaged for the AET Kubernetes cluster
+description: SmartDoc - client, document-service (server), PostgreSQL, Prometheus and Grafana packaged for the AET Kubernetes cluster
 type: application
 
-# Chart version — bump on every chart change.
-version: 0.1.0
+# Chart version - bump on every chart change.
+version: 0.2.0
 
 # Version of the SmartDoc application this chart deploys.
 appVersion: "1.0.0"
